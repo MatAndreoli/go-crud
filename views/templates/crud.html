@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD Dinâmico - {{.Schema.TableName}}</title>
+
+    <script src="/static/js/tailwindcss.js"></script>
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+    </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 p-4 md:p-8">
+    <div class="container mx-auto max-w-6xl">
+        <div class="flex justify-between items-center mb-10">
+            <h1 class="text-3xl font-light text-slate-50 capitalize tracking-wide">{{.Schema.TableName}}</h1>
+            <button id="open-modal-btn" class="px-6 py-2.5 rounded-full font-medium text-sm text-white transition-all duration-200 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 hover:shadow-lg hover:shadow-violet-500/30 active:scale-95">
+                <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Novo Registro
+                </span>
+            </button>
+        </div>
+
+        <!-- Modal -->
+        <div id="modal-overlay" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+            <div id="modal-container" class="bg-slate-900 shadow-2xl rounded-2xl overflow-hidden border border-slate-800/50 w-full max-w-2xl max-h-[90vh] flex flex-col">
+                <div class="p-6 border-b border-slate-800/50 flex justify-between items-center">
+                    <h2 class="text-xl font-light text-slate-100" id="form-title">Adicionar Novo</h2>
+                    <button id="close-modal-btn" class="text-slate-500 hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-slate-800/50">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="overflow-y-auto flex-1">
+                    <form id="crud-form" method="POST" action="/create" class="p-6 space-y-5" novalidate>
+                        <input type="hidden" id="form-id-field" name="id">
+                        {{range .Schema.Fields}}
+                        {{if not .PrimaryKey}}
+                        <div>
+                            <label for="field-{{.Name}}" class="block mb-2 text-sm font-medium text-slate-300 capitalize">{{.Name}} {{if .Required}}<span class="text-rose-400">*</span>{{end}}</label>
+                            <input type="{{.Type}}" id="field-{{.Name}}" name="{{.Name}}" class="w-full px-4 py-2.5 border border-slate-800 rounded-xl bg-slate-950 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 text-slate-100 placeholder-slate-600 transition-all" {{if .Required}}required{{end}} data-mask="{{.Mask}}" data-validate-type="{{.Validation.Type}}" value="{{index $.FormData .Name}}">
+                            {{if index $.Errors .Name}}
+                            <p class="text-rose-400 text-sm mt-2 font-normal" id="error-backend-{{.Name}}">
+                                {{index $.Errors .Name}}
+                            </p>
+                            {{end}}
+                            <p class="text-rose-400 text-sm mt-2 hidden font-normal" id="error-js-{{.Name}}"></p>
+                        </div>
+                        {{end}}
+                        {{end}}
+                        {{if index $.Errors "_form"}}
+                        <div class="p-3 bg-rose-950/50 text-rose-300 rounded-xl border border-rose-900/50 text-sm">
+                            {{index $.Errors "_form"}}
+                        </div>
+                        {{end}}
+                        <div class="flex gap-3 pt-4 border-t border-slate-800/50">
+                            <button type="submit" class="px-6 py-2.5 rounded-full font-medium text-sm text-white transition-all duration-200 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 hover:shadow-lg hover:shadow-violet-500/30 active:scale-95" id="form-submit-btn">Salvar</button>
+                            <button type="button" class="px-6 py-2.5 rounded-full font-medium text-sm text-slate-400 transition-all duration-200 bg-slate-800/50 hover:bg-slate-800 hover:text-slate-200 active:scale-95" id="form-cancel-btn">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela -->
+        <div class="w-full">
+            <div class="bg-slate-900 shadow-2xl rounded-2xl overflow-hidden border border-slate-800/50">
+                <div class="p-5 border-b border-slate-800/50">
+                    <form method="GET" action="/" class="flex gap-3">
+                        <input type="search" name="search" placeholder="Buscar registros..." class="w-full px-4 py-2.5 border border-slate-800 rounded-xl bg-slate-950 flex-grow focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 text-slate-100 placeholder-slate-600 transition-all" value="{{.SearchTerm}}">
+                        <button type="submit" class="px-6 py-2.5 rounded-full font-medium text-sm text-white transition-all duration-200 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 hover:shadow-lg hover:shadow-violet-500/30 active:scale-95">Buscar</button>
+                    </form>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-slate-800/50">
+                                {{range .Schema.Fields}}
+                                <th class="px-5 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{{.Name}}</th>
+                                {{end}}
+                                <th class="px-5 py-4 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/30">
+                            {{range .Data}}
+                            <tr id="row-{{index . " id"}}" class="hover:bg-slate-800/30 transition-colors">
+                                {{$row := .}}
+                                {{range $.Schema.Fields}}
+                                <td class="px-5 py-4 text-sm text-slate-300">{{index $row .Name}}</td>
+                                {{end}}
+                                <td class="px-5 py-4 text-right">
+                                    <div class="flex justify-end gap-2">
+                                        <button class="px-4 py-1.5 text-xs rounded-full font-medium text-white transition-all duration-200 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 hover:shadow-lg hover:shadow-emerald-500/20 active:scale-95" onclick="startEdit('{{index . "id"}}')">
+                                            Editar
+                                        </button>
+                                        <form method="POST" action="/delete?id={{index . "id"}}" onsubmit="return confirm('Tem certeza que deseja excluir?');">
+                                            <button type="submit" class="px-4 py-1.5 text-xs rounded-full font-medium text-white transition-all duration-200 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 hover:shadow-lg hover:shadow-rose-500/20 active:scale-95">Excluir</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {{end}}
+                            {{if not .Data}}
+                            <tr>
+                                <td colspan="{{.SchemaColspan}}" class="text-center text-slate-500 py-12 text-sm">
+                                    Nenhum registro encontrado
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="px-5 py-4 flex justify-between items-center text-sm text-slate-400 border-t border-slate-800/50 bg-slate-950/50">
+                    <span>Exibindo <span class="font-medium text-violet-400">{{len .Data}}</span> de <span class="font-medium text-violet-400">{{.Pagination.TotalRecords}}</span> registros</span>
+                    {{if gt .Pagination.TotalPages 1}}
+                    <div class="flex gap-2">
+                        {{if .Pagination.HasPrev}}
+                        <a href="?page={{.Pagination.PrevPage}}&search={{$.SearchTerm}}" class="px-3 py-1.5 rounded-lg text-violet-400 hover:bg-slate-800/50 font-medium transition-all">&laquo;</a>
+                        {{end}}
+                        <span class="px-3 py-1.5 rounded-lg bg-violet-600 text-white font-medium">{{.Pagination.CurrentPage}}</span>
+                        {{if .Pagination.HasNext}}
+                        <a href="?page={{.Pagination.NextPage}}&search={{$.SearchTerm}}" class="px-3 py-1.5 rounded-lg text-violet-400 hover:bg-slate-800/50 font-medium transition-all">&raquo;</a>
+                        {{end}}
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/imask.js"></script>
+
+    <script src="/static/js/main.js?v={{.CurrentTime}}"></script>
+
+</body>
+
+</html>

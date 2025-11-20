@@ -1,0 +1,38 @@
+{
+  "table_name": "produtos",
+  "fields": [
+    { "name": "id", "type": "int", "primary_key": true, "required": false },
+    { "name": "nome", "type": "string", "required": true },
+    { "name": "descricao", "type": "string", "required": false },
+    { "name": "preco", "type": "float", "required": true },
+    { "name": "quantidade", "type": "int", "required": true },
+    {
+      "name": "codigo_produto",
+      "type": "string",
+      "required": true,
+      "mask": "PRD-####",
+      "validation": {
+        "regex_rules": [
+          {
+            "pattern": "^PRD-[A-Z]{4}",
+            "message": "Código do produto inválido"
+          }
+        ]
+      }
+    },
+    {
+      "name": "vendido_por",
+      "type": "string",
+      "required": true,
+      "mask": "FOR-###",
+      "validation": {
+        "regex_rules": [
+          {
+            "pattern": "^FOR-[A-Z]{3}",
+            "message": "Código do fornecedor inválido"
+          }
+        ]
+      }
+    }
+  ]
+}
